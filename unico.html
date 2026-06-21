@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E GOOLL!</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { neon: '#a3e635', darkbg: '#111827', cardbg: '#1f2937' }
+                }
+            }
+        }
+    </script>
+    <style>
+        button { touch-action: manipulation; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-darkbg text-white font-sans antialiased pb-20">
+
+    <div id="tela-login" class="max-w-md mx-auto px-4 pt-20 flex flex-col items-center justify-center min-h-screen pb-32 transition-all">
+        <i class="fa-solid fa-futbol text-neon text-6xl mb-4"></i>
+        <h1 class="text-4xl font-extrabold tracking-tight mb-8">E<span class="text-neon">GOOL!</span></h1>
+        <div class="bg-cardbg p-6 rounded-2xl shadow-lg border border-gray-800 w-full text-center">
+            <p class="text-gray-300 mb-6 font-semibold text-sm">Acesse o Bolão com seu WhatsApp</p>
+            <div class="space-y-4 text-left">
+                <input type="tel" id="login-zap" placeholder="Telefone (Ex: 11999999999)" class="w-full bg-darkbg border border-gray-700 rounded-xl px-4 py-4 text-white focus:outline-none focus:border-neon text-center font-bold tracking-widest text-lg transition-all">
+                <div id="div-nome" class="hidden transition-all">
+                    <p class="text-xs text-neon mb-1 text-center">Primeiro acesso! Como você se chama?</p>
+                    <input type="text" id="cadastro-nome" placeholder="Seu nome" class="w-full bg-darkbg border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-neon text-center">
+                </div>
+                <button id="btn-entrar" class="w-full bg-neon text-darkbg font-bold py-4 rounded-xl shadow-lg shadow-neon/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                    <i class="fa-brands fa-whatsapp text-xl"></i><span id="btn-texto">Entrar na Disputa</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tela-app" class="hidden">
+        
+        <header class="sticky top-0 z-50 bg-cardbg/90 backdrop-blur-md border-b border-gray-800 shadow-md">
+            <div class="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-futbol text-neon text-2xl"></i>
+                    <h1 class="text-xl font-extrabold tracking-tight">E<span class="text-neon">GooL!</span></h1>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="btn-admin" onclick="mudarAba('admin')" class="hidden bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                        Admin <i class="fa-solid fa-crown ml-1"></i>
+                    </button>
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray-400 truncate w-20" id="user-header-name">Jogador</p>
+                        <p class="text-[11px] font-bold text-neon"><span id="user-creditos">0</span> Palpites Livres</p>
+                    </div>
+                    <button onclick="logout()" class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600 hover:border-red-500 hover:text-red-500 transition-colors">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-md mx-auto px-4 mt-6 space-y-6 pb-24" id="aba-palpites">
+            <button onclick="shareWhatsApp()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-green-500/30 transition-transform active:scale-95 flex items-center justify-center gap-2">
+                <i class="fa-brands fa-whatsapp text-xl"></i> Convidar Galera para o Bolão
+            </button>
+            
+            <div id="aviso-pagamento" class="hidden bg-yellow-900/40 border border-yellow-600 text-yellow-200 p-4 rounded-xl text-sm flex items-center gap-3">
+                <i class="fa-solid fa-wallet text-2xl"></i>
+                <div>
+                    <p class="font-bold">Saldo Zerado</p>
+                    <p class="text-xs opacity-80">Faça o Pix da cota para liberar mais palpites.</p>
+                </div>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex justify-between items-center border-l-4 border-neon pl-2">
+                    <h2 class="text-lg font-bold text-gray-300">Próximos Jogos</h2>
+                    <button id="btn-filtro-brasil" onclick="toggleFiltroBrasil()" class="bg-gray-800 border border-gray-700 text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all text-gray-400">
+                        <i class="fa-solid fa-filter text-[10px]"></i> Só Brasil
+                    </button>
+                </div>
+                
+                <div id="lista-jogos"><p class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Buscando jogos...</p></div>
+            </div>
+        </main>
+
+        <main class="hidden max-w-md mx-auto px-4 mt-6 space-y-6 pb-24" id="aba-ranking">
+            <h2 class="text-2xl font-bold text-white border-l-4 border-neon pl-2">Palpites da Galera</h2>
+            <div class="bg-cardbg rounded-2xl p-4 shadow-lg border border-gray-800">
+                <div id="lista-ranking" class="space-y-3">
+                    <p class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Buscando palpites...</p>
+                </div>
+            </div>
+        </main>
+
+        <main class="hidden max-w-md mx-auto px-4 mt-6 space-y-6 pb-24" id="aba-regras">
+            <h2 class="text-2xl font-bold text-white border-l-4 border-neon pl-2">Cota e Regras</h2>
+            <div class="bg-cardbg rounded-2xl p-5 shadow-lg border border-gray-800 space-y-5">
+                <div class="text-center">
+                    <i class="fa-brands fa-pix text-4xl text-teal-400 mb-2"></i>
+                    <h3 class="text-lg font-bold text-white">Pagamento da Cota</h3>
+                    <p class="text-xs text-gray-400 mb-3">1 Cota (1 Palpite) = <span class="text-neon font-bold">R$ 10,00</span></p>
+                    <div class="bg-darkbg p-3 rounded-xl border border-gray-700 flex justify-between items-center gap-3">
+                        <span id="chave-pix" class="text-sm font-mono text-gray-300 truncate w-full text-left">suachavepix@email.com</span>
+                        <button onclick="copiarPix()" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                <hr class="border-gray-700">
+                <div>
+                    <h3 class="font-bold text-neon mb-2 text-sm uppercase tracking-widest"><i class="fa-solid fa-trophy"></i> Como Ganhar</h3>
+                    <p class="text-sm text-gray-300 bg-darkbg p-3 rounded-lg border border-gray-700 mb-3">
+                        Quem acertar o <b>Placar Exato</b> (vencedor e número de gols exato de cada time) leva a bolada daquele jogo! 
+                        Em caso de mais de um acertador, o prêmio é dividido igualmente.
+                    </p>
+                    <p class="text-sm text-gray-300 bg-darkbg p-3 rounded-lg border border-gray-700">
+                        <i class="fa-solid fa-circle-info text-neon mr-1"></i> Cada jogo apostado consome <b>1 palpite</b> do seu saldo. Você pode alterar placares que já apostou sem gastar novos palpites.
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <main class="hidden max-w-md mx-auto px-4 mt-6 space-y-6 pb-24" id="aba-admin">
+            <button onclick="mudarAba('palpites')" class="text-gray-400 hover:text-white transition"><i class="fa-solid fa-arrow-left"></i> Voltar aos Jogos</button>
+            <h2 class="text-2xl font-bold text-white border-l-4 border-purple-600 pl-2">Painel do Admin</h2>
+            
+            <div class="bg-cardbg rounded-2xl p-4 shadow-lg border border-gray-800">
+                <h3 class="text-xs text-gray-400 mb-4 font-bold uppercase tracking-wider"><i class="fa-solid fa-wallet text-purple-400 mr-1"></i> Liberação de Palpites</h3>
+                <div id="lista-pendentes" class="space-y-3"></div>
+            </div>
+
+            <div class="bg-cardbg rounded-2xl p-4 shadow-lg border border-gray-800">
+                <h3 class="text-xs text-gray-400 mb-4 font-bold uppercase tracking-wider"><i class="fa-solid fa-square-poll-horizontal text-purple-400 mr-1"></i> Inserir Resultados Reais</h3>
+                <div id="lista-jogos-admin" class="space-y-4">
+                    <p class="text-center text-gray-500 text-xs py-4">Carregando partidas disponíveis...</p>
+                </div>
+            </div>
+        </main>
+
+        <nav class="fixed bottom-0 w-full bg-cardbg border-t border-gray-800 pb-safe z-50">
+            <div class="max-w-md mx-auto flex justify-around p-3">
+                <button onclick="mudarAba('palpites')" id="nav-palpites" class="nav-btn flex flex-col items-center text-neon transition-colors">
+                    <i class="fa-solid fa-futbol mb-1 text-lg"></i><span class="text-[10px] font-bold">Palpites</span>
+                </button>
+                <button onclick="mudarAba('ranking')" id="nav-ranking" class="nav-btn flex flex-col items-center text-gray-500 hover:text-gray-300 transition-colors">
+                    <i class="fa-solid fa-users mb-1 text-lg"></i><span class="text-[10px] font-bold">Galera</span>
+                </button>
+                <button onclick="mudarAba('regras')" id="nav-regras" class="nav-btn flex flex-col items-center text-gray-500 hover:text-gray-300 transition-colors">
+                    <i class="fa-solid fa-wallet mb-1 text-lg"></i><span class="text-[10px] font-bold">Regras/Pix</span>
+                </button>
+            </div>
+        </nav>
+
+    </div>
+
+    <script>
+        const dbClient = window.supabase.createClient(
+            'https://jjyouclwvoycsyndfxuc.supabase.co', 
+            'sb_publishable_9F3dCdECAw2FoSij0WrXPg_TmkJ4m9o'
+        );
+
+        let currentUser = null;
+        let modoCadastro = false;
+        let filtrarBrasil = false; 
+
+        window.onload = () => {
+            const telSalvo = localStorage.getItem('nagaveta_user');
+            if (telSalvo) logar(telSalvo);
+        };
+
+        document.getElementById('btn-entrar').addEventListener('click', async () => {
+            const zap = document.getElementById('login-zap').value.trim();
+            const btnTexto = document.getElementById('btn-texto');
+            if(zap.length < 10) return alert("Insira o número completo com DDD.");
+
+            btnTexto.innerText = "Processando...";
+            try {
+                const { data: user } = await dbClient.from('usuarios').select('*').eq('telefone', zap).maybeSingle();
+                if (user) {
+                    localStorage.setItem('nagaveta_user', zap);
+                    logar(zap);
+                } else {
+                    if(!modoCadastro) {
+                        modoCadastro = true;
+                        document.getElementById('div-nome').classList.remove('hidden');
+                        btnTexto.innerText = "Finalizar Inscrição";
+                    } else {
+                        const nome = document.getElementById('cadastro-nome').value.trim();
+                        if(!nome) { alert("O nome é obrigatório!"); btnTexto.innerText = "Finalizar Inscrição"; return; }
+                        await dbClient.from('usuarios').insert([{ telefone: zap, nome: nome, token_acesso: 'USER' }]);
+                        localStorage.setItem('nagaveta_user', zap);
+                        logar(zap);
+                    }
+                }
+            } catch (err) { alert("Erro ao conectar."); btnTexto.innerText = "Entrar na Disputa"; }
+        });
+
+        async function logar(telefone) {
+            const { data: user } = await dbClient.from('usuarios').select('*').eq('telefone', telefone).single();
+            if(user) {
+                currentUser = user;
+                document.getElementById('tela-login').classList.add('hidden');
+                document.getElementById('tela-app').classList.remove('hidden');
+                document.getElementById('user-header-name').innerText = user.nome;
+                
+                atualizarInterfaceCreditos();
+                
+                if (user.is_admin) document.getElementById('btn-admin').classList.remove('hidden');
+
+                carregarJogos();
+            }
+        }
+
+        function atualizarInterfaceCreditos() {
+            const creditos = currentUser.creditos || 0;
+            document.getElementById('user-creditos').innerText = creditos;
+            
+            if (creditos <= 0 && !currentUser.is_admin) {
+                document.getElementById('aviso-pagamento').classList.remove('hidden');
+            } else {
+                document.getElementById('aviso-pagamento').classList.add('hidden');
+            }
+        }
+
+        function mudarAba(abaSelecionada) {
+            const abas = ['palpites', 'ranking', 'regras', 'admin'];
+            abas.forEach(aba => {
+                document.getElementById(`aba-${aba}`).classList.add('hidden');
+                if(aba !== 'admin') {
+                    const btn = document.getElementById(`nav-${aba}`);
+                    btn.classList.remove('text-neon');
+                    btn.classList.add('text-gray-500');
+                }
+            });
+
+            document.getElementById(`aba-${abaSelecionada}`).classList.remove('hidden');
+            if(abaSelecionada !== 'admin') {
+                const btnAtivo = document.getElementById(`nav-${abaSelecionada}`);
+                btnAtivo.classList.remove('text-gray-500');
+                btnAtivo.classList.add('text-neon');
+            }
+
+            if (abaSelecionada === 'ranking') carregarRanking();
+            if (abaSelecionada === 'admin') carregarAdminPainel();
+        }
+
+        function toggleFiltroBrasil() {
+            filtrarBrasil = !filtrarBrasil;
+            const btn = document.getElementById('btn-filtro-brasil');
+            
+            if (filtrarBrasil) {
+                btn.classList.remove('bg-gray-800', 'border-gray-700', 'text-gray-400');
+                btn.classList.add('bg-neon', 'text-darkbg', 'font-bold', 'border-neon');
+                btn.innerHTML = '<i class="fa-solid fa-check text-[10px]"></i> Só Brasil';
+            } else {
+                btn.classList.remove('bg-neon', 'text-darkbg', 'font-bold', 'border-neon');
+                btn.classList.add('bg-gray-800', 'border-gray-700', 'text-gray-400');
+                btn.innerHTML = '<i class="fa-solid fa-filter text-[10px]"></i> Só Brasil';
+            }
+            carregarJogos(); 
+        }
+
+        async function carregarRanking() {
+            const { data: usuarios } = await dbClient.from('usuarios').select('telefone, nome');
+            const { data: jogos } = await dbClient.from('jogos').select('*').order('data_hora', { ascending: true });
+            const { data: palpites } = await dbClient.from('palpites').select('*');
+
+            const container = document.getElementById('lista-ranking');
+            container.innerHTML = '';
+
+            if (!jogos || jogos.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-10">Nenhum jogo encontrado.</p>';
+                return;
+            }
+
+            let totalJogosExibidos = 0;
+
+            jogos.forEach(jogo => {
+                const palpitesDoJogo = palpites.filter(p => p.jogo_id === jogo.id);
+
+                if (palpitesDoJogo.length === 0) return;
+
+                totalJogosExibidos++;
+                let palpitesHTML = '';
+
+                palpitesDoJogo.forEach(palpite => {
+                    const user = usuarios.find(u => u.telefone === palpite.user_telefone);
+                    const nomeUser = user ? user.nome : 'Desconhecido';
+
+                    const finalizado = jogo.status === 'finalizado';
+                    const acertou = finalizado && (jogo.gols_a_oficial === palpite.palpite_a && jogo.gols_b_oficial === palpite.palpite_b);
+                    
+                    const corTexto = acertou ? 'text-neon font-black' : 'text-gray-300';
+                    const iconeAcerto = acertou ? '<i class="fa-solid fa-check-circle text-neon ml-1"></i>' : '';
+                    const destaqueFundo = acertou ? 'bg-green-900/20 border-green-500/50' : 'bg-darkbg border-gray-700';
+
+                    palpitesHTML += `
+                    <div class="flex justify-between items-center text-xs border-b border-gray-800 py-2 px-1">
+                        <span class="${acertou ? 'text-white font-bold' : 'text-gray-400'}"><i class="fa-solid fa-user text-[10px] mr-1 opacity-50"></i> ${nomeUser}</span>
+                        <span class="${corTexto} ${destaqueFundo} px-2 py-1 rounded border">
+                            ${palpite.palpite_a} x ${palpite.palpite_b} ${iconeAcerto}
+                        </span>
+                    </div>`;
+                });
+
+                container.innerHTML += `
+                <div class="bg-darkbg p-3 rounded-xl border border-gray-700 mb-4 shadow-sm">
+                    <h3 class="font-bold text-sm text-white mb-2 text-center pb-2 border-b border-gray-600">
+                        ${jogo.time_a || 'Time A'} <span class="text-gray-500 font-normal mx-1">x</span> ${jogo.time_b || 'Time B'}
+                    </h3>
+                    <div class="space-y-1">
+                        ${palpitesHTML}
+                    </div>
+                </div>`;
+            });
+
+            if (totalJogosExibidos === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-10 text-xs">Nenhum palpite foi feito pela galera até agora.</p>';
+            }
+        }
+
+        async function carregarJogos() {
+            let { data: jogos } = await dbClient.from('jogos').select('*').order('data_hora', { ascending: true });
+            const { data: palpites } = await dbClient.from('palpites').select('*').eq('user_telefone', currentUser.telefone);
+            const container = document.getElementById('lista-jogos');
+            container.innerHTML = '';
+
+            const creditosAtuais = currentUser.creditos || 0;
+
+            if (filtrarBrasil && jogos) {
+                jogos = jogos.filter(jogo => {
+                    const eqA = jogo.time_a ? jogo.time_a.toLowerCase() : '';
+                    const eqB = jogo.time_b ? jogo.time_b.toLowerCase() : '';
+                    return eqA.includes('brasil') || eqB.includes('brasil');
+                });
+            }
+
+            if (!jogos || jogos.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-12 text-sm"><i class="fa-solid fa-circle-info text-neon text-lg mb-2 block"></i>Nenhum jogo localizado com esse filtro.</p>';
+                return;
+            }
+
+            jogos.forEach(jogo => {
+                const palpiteRealizado = palpites?.find(p => p.jogo_id === jogo.id);
+                const palpite = palpiteRealizado || { palpite_a: 0, palpite_b: 0 };
+                
+                const dataObj = new Date(jogo.data_hora);
+                const dia = String(dataObj.getUTCDate()).padStart(2, '0');
+                const mes = String(dataObj.getUTCMonth() + 1).padStart(2, '0');
+                const hora = String(dataObj.getUTCHours()).padStart(2, '0');
+                const minuto = String(dataObj.getUTCMinutes()).padStart(2, '0');
+                const dataFormatada = `${dia}/${mes} • ${hora}:${minuto}`;
+                
+                const finalizado = jogo.status === 'finalizado';
+                
+                // Bloqueia a edição apenas se o jogo não finalizou, o saldo for <= 0, E o usuário não tiver palpite neste jogo
+                const semSaldoE_NaoApostou = (!currentUser.is_admin && creditosAtuais <= 0 && !palpiteRealizado);
+                
+                let textBotao = palpiteRealizado ? 'Editar Palpite' : 'Apostar 1 Palpite';
+                let btnCor = palpiteRealizado ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-neon text-darkbg hover:bg-green-400 font-bold';
+                let cardStyle = 'border-gray-800';
+                let badgeStatus = '';
+                
+                if (finalizado) {
+                    textBotao = `<i class="fa-solid fa-square-poll-vertical mr-1"></i> Placar Oficial: ${jogo.gols_a_oficial} x ${jogo.gols_b_oficial}`;
+                    btnCor = 'bg-red-500/10 text-red-400 border border-red-500/30 cursor-not-allowed font-bold';
+                    cardStyle = 'border-red-500/30 bg-red-950/5';
+                    badgeStatus = '<span class="bg-red-500/20 text-red-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-red-500/30 tracking-widest uppercase">Fim de Jogo</span>';
+                } else if (semSaldoE_NaoApostou) {
+                    textBotao = '<i class="fa-solid fa-lock"></i> Sem Palpites Livres';
+                    btnCor = 'bg-gray-800 text-gray-500 cursor-not-allowed';
+                }
+
+                const inputsDesabilitados = finalizado || semSaldoE_NaoApostou;
+
+                container.innerHTML += `
+                <div class="bg-cardbg rounded-2xl p-4 shadow-lg border transition-all ${cardStyle}">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs text-gray-400 font-semibold tracking-wider uppercase">${dataFormatada}</span>
+                        ${badgeStatus}
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex flex-col items-center gap-2 w-1/3"><span class="text-sm font-bold text-center">${jogo.time_a || 'A Definir'}</span></div>
+                        <div class="flex items-center gap-3 w-1/3 justify-center">
+                            <div class="flex flex-col items-center gap-1">
+                                <button onclick="changeScore('pa-${jogo.id}', 1)" ${inputsDesabilitados?'disabled':''} class="w-8 h-8 bg-gray-700 rounded-full active:bg-gray-600"><i class="fa-solid fa-plus text-xs"></i></button>
+                                <input type="number" id="pa-${jogo.id}" value="${palpite.palpite_a}" class="w-10 text-center bg-transparent text-2xl font-bold focus:outline-none ${finalizado ? 'text-gray-400':''}" readonly>
+                                <button onclick="changeScore('pa-${jogo.id}', -1)" ${inputsDesabilitados?'disabled':''} class="w-8 h-8 bg-gray-700 rounded-full active:bg-gray-600"><i class="fa-solid fa-minus text-xs"></i></button>
+                            </div>
+                            <span class="text-gray-500 font-bold">X</span>
+                            <div class="flex flex-col items-center gap-1">
+                                <button onclick="changeScore('pb-${jogo.id}', 1)" ${inputsDesabilitados?'disabled':''} class="w-8 h-8 bg-gray-700 rounded-full active:bg-gray-600"><i class="fa-solid fa-plus text-xs"></i></button>
+                                <input type="number" id="pb-${jogo.id}" value="${palpite.palpite_b}" class="w-10 text-center bg-transparent text-2xl font-bold focus:outline-none ${finalizado ? 'text-gray-400':''}" readonly>
+                                <button onclick="changeScore('pb-${jogo.id}', -1)" ${inputsDesabilitados?'disabled':''} class="w-8 h-8 bg-gray-700 rounded-full active:bg-gray-600"><i class="fa-solid fa-minus text-xs"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center gap-2 w-1/3"><span class="text-sm font-bold text-center">${jogo.time_b || 'A Definir'}</span></div>
+                    </div>
+                    <button onclick="salvarPalpite(this, ${jogo.id})" ${inputsDesabilitados?'disabled':''} class="w-full text-sm py-2.5 rounded-xl transition-all ${btnCor}">
+                        ${textBotao}
+                    </button>
+                </div>`;
+            });
+        }
+
+        function changeScore(inputId, amount) {
+            const input = document.getElementById(inputId);
+            let val = parseInt(input.value) || 0;
+            if (val + amount >= 0 && val + amount <= 15) input.value = val + amount;
+        }
+
+        async function salvarPalpite(btn, jogoId) {
+            const golsA = parseInt(document.getElementById(`pa-${jogoId}`).value);
+            const golsB = parseInt(document.getElementById(`pb-${jogoId}`).value);
+            btn.innerHTML = 'Processando...';
+            
+            const { data, error } = await dbClient.rpc('salvar_palpite_com_credito', { 
+                p_telefone: currentUser.telefone, 
+                p_jogo_id: jogoId, 
+                p_gols_a: golsA, 
+                p_gols_b: golsB 
+            });
+
+            if (error) {
+                alert("Erro: " + error.message);
+                carregarJogos(); // Recarrega para voltar o botão
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Salvo!';
+                
+                // Recarrega os dados do usuário para atualizar os créditos no topo e a tela
+                const { data: usuarioAtualizado } = await dbClient.from('usuarios').select('*').eq('telefone', currentUser.telefone).single();
+                currentUser = usuarioAtualizado;
+                atualizarInterfaceCreditos();
+                
+                setTimeout(() => { carregarJogos(); }, 1500);
+            }
+        }
+
+        async function carregarAdminPainel() {
+            // Puxa todos os usuários para o Admin poder adicionar créditos em quem ele quiser
+            const { data: usuariosApp } = await dbClient.from('usuarios').select('*').eq('is_admin', false);
+            const containerPix = document.getElementById('lista-pendentes');
+            containerPix.innerHTML = '';
+
+            usuariosApp.forEach(user => {
+                containerPix.innerHTML += `
+                <div class="flex justify-between items-center bg-darkbg p-2.5 rounded-xl border border-gray-700" id="user-${user.telefone}">
+                    <div class="w-1/2">
+                        <p class="font-bold text-xs text-white">${user.nome}</p>
+                        <p class="text-[10px] text-gray-400">Saldo atual: ${user.creditos || 0}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="qtd-cred-${user.telefone}" value="1" min="1" class="w-10 py-1 text-center bg-cardbg border border-gray-600 rounded text-xs focus:border-neon focus:outline-none text-white">
+                        <button onclick="confirmarPix('${user.telefone}')" class="bg-neon text-darkbg px-2.5 py-1 text-xs font-bold rounded-lg hover:bg-green-400">Liberar</button>
+                    </div>
+                </div>`;
+            });
+
+            const { data: jogos } = await dbClient.from('jogos').select('*').order('status', { ascending: false }).order('data_hora', { ascending: true });
+            const containerJogos = document.getElementById('lista-jogos-admin');
+            containerJogos.innerHTML = '';
+
+            jogos.forEach(jogo => {
+                const isFin = jogo.status === 'finalizado';
+                const labelStatus = isFin ? '<span class="text-red-400 font-bold">Encerrado</span>' : '<span class="text-green-400 font-bold">Em Aberto</span>';
+                const corBotao = isFin ? 'bg-gray-700 text-gray-400' : 'bg-purple-600 text-white font-bold hover:bg-purple-500';
+
+                containerJogos.innerHTML += `
+                <div class="bg-darkbg p-3 rounded-xl border border-gray-700 space-y-2">
+                    <div class="flex justify-between items-center text-[11px] text-gray-400 font-semibold px-1">
+                        <span>ID: #_${jogo.id}</span>
+                        ${labelStatus}
+                    </div>
+                    <div class="flex items-center justify-between gap-2 bg-cardbg p-2 rounded-lg">
+                        <span class="text-xs font-bold w-1/3 truncate">${jogo.time_a || 'TBD'}</span>
+                        <div class="flex items-center gap-1 justify-center w-1/3">
+                            <input type="number" id="adm-a-${jogo.id}" value="${jogo.gols_a_oficial !== null ? jogo.gols_a_oficial : 0}" class="w-8 py-1 text-center bg-darkbg border border-gray-700 rounded font-bold text-neon focus:outline-none">
+                            <span class="text-gray-600 text-xs font-bold">x</span>
+                            <input type="number" id="adm-b-${jogo.id}" value="${jogo.gols_b_oficial !== null ? jogo.gols_b_oficial : 0}" class="w-8 py-1 text-center bg-darkbg border border-gray-700 rounded font-bold text-neon focus:outline-none">
+                        </div>
+                        <span class="text-xs font-bold w-1/3 text-right truncate">${jogo.time_b || 'TBD'}</span>
+                    </div>
+                    <button onclick="salvarResultadoOficial(this, ${jogo.id})" class="w-full text-xs py-1.5 rounded-lg transition-all ${corBotao}">
+                        ${isFin ? 'Atualizar Resultado Oficial' : 'Fechar Jogo & Computar Pontos'}
+                    </button>
+                </div>`;
+            });
+        }
+
+        async function confirmarPix(telefone) {
+            const inputQtd = document.getElementById(`qtd-cred-${telefone}`);
+            const qtdAdicionar = parseInt(inputQtd.value) || 1;
+            
+            // Busca o saldo atual do usuário no banco
+            const { data: u } = await dbClient.from('usuarios').select('creditos').eq('telefone', telefone).single();
+            const novoSaldo = (u.creditos || 0) + qtdAdicionar;
+
+            await dbClient.from('usuarios').update({ pago: true, creditos: novoSaldo }).eq('telefone', telefone);
+            
+            alert(`Liberado! O saldo agora é de ${novoSaldo} palpites.`);
+            carregarAdminPainel(); // Recarrega a lista
+        }
+
+        async function salvarResultadoOficial(btn, jogoId) {
+            const golA = parseInt(document.getElementById(`adm-a-${jogoId}`).value);
+            const golB = parseInt(document.getElementById(`adm-b-${jogoId}`).value);
+            
+            if(isNaN(golA) || isNaN(golB)) return alert("Por favor, preencha ambos os placares.");
+            btn.innerHTML = 'Processando...';
+            
+            const { error } = await dbClient.rpc('finalizar_jogo', { 
+                p_jogo_id: jogoId, 
+                p_gols_a: golA, 
+                p_gols_b: golB 
+            });
+
+            if (error) {
+                alert("Erro ao computar: " + error.message);
+                btn.innerHTML = "Tentar Novamente";
+            } else {
+                btn.className = "w-full text-xs py-1.5 rounded-lg bg-green-500 text-darkbg font-bold";
+                btn.innerHTML = 'Pontos Distribuídos!';
+                setTimeout(() => { carregarAdminPainel(); carregarJogos(); }, 1500);
+            }
+        }
+
+        function copiarPix() {
+            const Chave = document.getElementById('chave-pix').innerText;
+            navigator.clipboard.writeText(Chave);
+            alert("Chave Pix copiada!");
+        }
+
+        function shareWhatsApp() {
+            const text = encodeURIComponent("⚽ *Bolão E GOOLL! - A Disputa Começou!* 🏆\n1 Palpite é só R$ 10. Faz seu palpite rápido clicando aqui:\n\n👉 https://seusite.github.io");
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+        }
+
+        function logout() { localStorage.removeItem('nagaveta_user'); location.reload(); }
+    </script>
+</body>
+</html>
